@@ -1,0 +1,100 @@
+[
+  {
+    "timestamp": "2025-12-03T00:43:25.515654",
+    "type": "buy",
+    "symbol": "AAPL",
+    "qty": 1,
+    "price": 286.19000244140625
+  },
+  {
+    "timestamp": "2025-12-03T01:17:38.953535",
+    "type": "buy",
+    "symbol": "MSFT",
+    "qty": 10,
+    "price": 490
+  },
+  {
+    "timestamp": "2025-12-03T01:18:09.786407",
+    "type": "buy",
+    "symbol": "BTC-USD",
+    "qty": 1,
+    "price": 91416.203125
+  },
+  {
+    "timestamp": "2025-12-03T01:39:01.033190",
+    "type": "buy",
+    "symbol": "AAPL",
+    "qty": 9,
+    "price": 286.19000244140625
+  },
+  {
+    "timestamp": "2025-12-03T02:46:24.365965",
+    "type": "buy",
+    "symbol": "AAPL",
+    "qty": 100,
+    "price": 286.19000244140625
+  },
+  {
+    "timestamp": "2025-12-03T02:46:48.113118",
+    "type": "sell",
+    "symbol": "AAPL",
+    "qty": 100,
+    "price": 286.19000244140625
+  },
+  {
+    "timestamp": "2025-12-03T02:55:35.111464",
+    "type": "buy",
+    "symbol": "AAPL",
+    "qty": 4,
+    "price": 286.19000244140625
+  },
+  {
+    "timestamp": "2025-12-03T03:00:04.269807",
+    "type": "buy",
+    "symbol": "AAPL",
+    "qty": 100,
+    "price": 286.19000244140625
+  },
+  {
+    "timestamp": "2025-12-03T03:00:16.970467",
+    "type": "sell",
+    "symbol": "AAPL",
+    "qty": 100,
+    "price": 286.19000244140625
+  },
+  {
+    "timestamp": "2025-12-03T03:03:21.955327",
+    "type": "buy",
+    "symbol": "AAPL",
+    "qty": 7,
+    "price": 286.19000244140625
+  },
+  {
+    "timestamp": "2025-12-04T20:38:55.343645",
+    "type": "buy",
+    "symbol": "MSFT",
+    "qty": 10,
+    "price": 478.3299865722656
+  },
+  {
+    "timestamp": "2025-12-04T20:39:29.851279",
+    "type": "sell",
+    "symbol": "MSFT",
+    "qty": 10,
+    "price": 478.4100036621094
+  },
+  {
+    "timestamp": "2025-12-11T10:49:27.400591",
+    "type": "buy",
+    "symbol": "AAPL",
+    "qty": 100,
+    "price": 278.7799987792969
+  },
+  {
+    "timestamp": "2025-12-11T13:58:42.818011",
+    "type": "buy",
+    "symbol": "AAPL",
+    "qty": 10,
+    "price": 278.7799987792969
+  }
+]

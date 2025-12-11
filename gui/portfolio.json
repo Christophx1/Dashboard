@@ -1,0 +1,20 @@
+[
+  {
+    "symbol": "AAPL",
+    "qty": 131,
+    "buy_price": 279.9678619617724,
+    "avg_price": 279.9678619617724
+  },
+  {
+    "symbol": "MSFT",
+    "qty": 10,
+    "buy_price": 484.1649932861328,
+    "avg_price": 484.1649932861328
+  },
+  {
+    "symbol": "BTC-USD",
+    "qty": 1,
+    "buy_price": 91416.203125,
+    "avg_price": 91416.203125
+  }
+]

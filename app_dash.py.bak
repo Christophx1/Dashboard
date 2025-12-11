@@ -1,0 +1,244 @@
+import dash
+from dash import dcc, html, Input, Output, State, callback, ctx, dash_table
+import dash_bootstrap_components as dbc
+import plotly.graph_objects as go
+import yfinance as yf
+import requests
+import json
+import re
+from pathlib import Path
+from datetime import datetime
+from html import unescape
+
+# ============== Daten-Pfade ==============
+DATA_DIR = Path(__file__).parent / "gui"
+DATA_DIR.mkdir(exist_ok=True)
+PORTFOLIO_FILE = DATA_DIR / "portfolio.json"
+TRANSACTIONS_FILE = DATA_DIR / "transactions.json"
+BALANCE_FILE = DATA_DIR / "balance.json"
+
+# ============== Market Overview Symbole ==============
+MARKET_OVERVIEW_SYMBOLS = [
+    {"name": "DAX", "symbol": "^GDAXI", "decimals": 0},
+    {"name": "MDAX", "symbol": "^MDAXI", "decimals": 0},
+    {"name": "SDAX", "symbol": "^SDAXI", "decimals": 0},
+    {"name": "Dow", "symbol": "^DJI", "decimals": 0},
+    {"name": "Nasdaq", "symbol": "^IXIC", "decimals": 0},
+    {"name": "Gold", "symbol": "GC=F", "decimals": 2},
+    {"name": "Brent", "symbol": "BZ=F", "decimals": 2},
+    {"name": "BTC", "symbol": "BTC-USD", "decimals": 0},
+    {"name": "EUR/USD", "symbol": "EURUSD=X", "decimals": 4, "invert": True},
+]
+
+
+def load_balance():
+    if BALANCE_FILE.exists():
+        try:
+            return float(json.loads(BALANCE_FILE.read_text(encoding="utf-8")))
+        except:
+            return 10000.0
+    return 10000.0
+
+
+def save_balance(balance):
+    try:
+        BALANCE_FILE.write_text(json.dumps(balance), encoding="utf-8")
+    except Exception:
+        pass
+def load_portfolio():
+    if PORTFOLIO_FILE.exists():
+        try:
+            return json.loads(PORTFOLIO_FILE.read_text(encoding="utf-8"))
+        except:
+            return []
+    return []
+
+
+def save_portfolio(data):
+    PORTFOLIO_FILE.write_text(json.dumps(data, indent=2), encoding="utf-8")
+
+
+def load_transactions():
+    if TRANSACTIONS_FILE.exists():
+        try:
+            return json.loads(TRANSACTIONS_FILE.read_text(encoding="utf-8"))
+        except:
+            return []
+    return []
+
+
+def save_transaction(tx):
+    txs = load_transactions()
+    txs.append(tx)
+    TRANSACTIONS_FILE.write_text(json.dumps(txs, indent=2), encoding="utf-8")
+
+
+def fetch_price(symbol):
+    try:
+        t = yf.Ticker(symbol)
+        fast = getattr(t, "fast_info", None)
+        if fast:
+            price = getattr(fast, "last_price", None)
+            prev = getattr(fast, "previous_close", None)
+            return price, prev
+    except:
+        pass
+    return None, None
+
+
+def fetch_name(symbol):
+    try:
+        t = yf.Ticker(symbol)
+        info = t.info
+        return info.get("longName") or info.get("shortName") or symbol
+    except:
+        return symbol
+
+
+def fetch_stock_history(symbol, period="1mo", interval="1d"):
+    try:
+        t = yf.Ticker(symbol)
+        hist = t.history(period=period, interval=interval)
+        return hist
+    except:
+        return None
+
+
+def search_stocks(query):
+    if not query or len(query) < 2:
+        return []
+    try:
+        url = f"https://query1.finance.yahoo.com/v1/finance/search?q={query}&quotesCount=10&newsCount=0"
+        resp = requests.get(url, timeout=5, headers={"User-Agent": "Mozilla/5.0"})
+        data = resp.json()
+        results = []
+        for q in data.get("quotes", []):
+            if q.get("quoteType") in ["EQUITY", "ETF", "INDEX", "CRYPTOCURRENCY", "CURRENCY"]:
+                results.append({
+                    "symbol": q.get("symbol"),
+                    "name": q.get("shortname") or q.get("longname") or q.get("symbol"),
+                    "exchange": q.get("exchange", "")
+                })
+        return results
+    except:
+        return []
+
+
+def fetch_google_news(symbol, limit=20):
+    try:
+        url = f"https://news.google.com/rss/search?q={symbol}+stock&hl=de&gl=DE&ceid=DE:de"
+        resp = requests.get(url, timeout=10, headers={"User-Agent": "Mozilla/5.0"})
+        items = re.findall(r"<item>(.*?)</item>", resp.text, re.DOTALL)
+        news = []
+        for item in items[:limit]:
+            title_m = re.search(r"<title>(.*?)</title>", item)
+            link_m = re.search(r"<link>(.*?)</link>", item)
+            pub_m = re.search(r"<pubDate>(.*?)</pubDate>", item)
+            source_m = re.search(r"<source.*?>(.*?)</source>", item)
+            title = unescape(title_m.group(1)) if title_m else "News"
+            link = link_m.group(1) if link_m else ""
+            pub = pub_m.group(1) if pub_m else ""
+            source = unescape(source_m.group(1)) if source_m else ""
+            news.append({"title": title, "link": link, "pubDate": pub, "source": source, "symbol": symbol})
+        return news
+    except:
+        return []
+
+
+def format_volume(vol):
+    if vol is None:
+        return "n/a"
+    if vol >= 1_000_000_000:
+        return f"{vol/1_000_000_000:.2f}B"
+    if vol >= 1_000_000:
+        return f"{vol/1_000_000:.2f}M"
+    if vol >= 1_000:
+        return f"{vol/1_000:.1f}K"
+    return str(vol)
+
+
+def create_stock_chart(symbol, period="1mo", interval="1d"):
+    hist = fetch_stock_history(symbol, period, interval)
+    if hist is None or hist.empty:
+        fig = go.Figure()
+        fig.add_annotation(text="Keine Daten verfügbar", x=0.5, y=0.5, showarrow=False, font=dict(size=16))
+        fig.update_layout(xaxis=dict(visible=False), yaxis=dict(visible=False))
+        return fig
+    
+    start_price = hist["Close"].iloc[0]
+    end_price = hist["Close"].iloc[-1]
+    is_positive = end_price >= start_price
+    color = "#22c55e" if is_positive else "#ef4444"
+    
+    # Y-Achse zoomen
+    y_min = hist["Close"].min()
+    y_max = hist["Close"].max()
+    y_range = y_max - y_min
+    if y_range < 0.01 * y_max:
+        padding = 0.005 * y_max
+    else:
+        padding = y_range * 0.1
+    
+    fig = go.Figure()
+    fig.add_trace(go.Scatter(
+        x=hist.index,
+        y=hist["Close"],
+        mode="lines",
+        line=dict(color=color, width=2),
+        fill="tozeroy",
+        fillcolor=f"rgba({34 if is_positive else 239}, {197 if is_positive else 68}, {94 if is_positive else 68}, 0.1)",
+        name=symbol,
+        hovertemplate="%{y:.2f}<extra></extra>"
+    ))
+    
+    pct_change = ((end_price - start_price) / start_price) * 100
+    sign = "+" if pct_change >= 0 else ""
+    
+    fig.update_layout(
+        title=dict(text=f"{symbol} ({sign}{pct_change:.2f}%)", font=dict(size=16, color=color)),
+        yaxis=dict(range=[y_min - padding, y_max + padding], tickformat=",.2f", gridcolor="#e5e7eb"),
+        xaxis=dict(showgrid=True, gridcolor="#e5e7eb"),
+        plot_bgcolor="white",
+        paper_bgcolor="white",
+        margin=dict(l=50, r=20, t=50, b=50),
+        hovermode="x unified",
+        showlegend=False
+    )
+    return fig
+
+def create_portfolio_pie_chart(portfolio):
+    if not portfolio:
+        fig = go.Figure()
+        fig.add_annotation(text="Portfolio ist leer", x=0.5, y=0.5, showarrow=False, font=dict(size=16))
+        fig.update_layout(xaxis=dict(visible=False), yaxis=dict(visible=False))
+        return fig
+    
+    labels = []
+    values = []
+    colors = []
+    
+    for item in portfolio:
+        symbol = item["symbol"]
+        qty = item["qty"]
+        current_price, _ = fetch_price(symbol)
+        if current_price:
+            value = qty * current_price
+            values.append(value)
+            labels.append(symbol)
+            # Zufällige Farben oder feste Palette
+            colors.append(f"hsl({hash(symbol) % 360}, 70%, 50%)")
+    
+    if not values:
+        fig = go.Figure()
+        fig.add_annotation(text="Keine aktuellen Preise verfügbar", x=0.5, y=0.5, showarrow=False, font=dict(size=16))
+        fig.update_layout(xaxis=dict(visible=False), yaxis=dict(visible=False))
+        return fig
+    
+    fig = go.Figure(data=[go.Pie(
+        labels=labels,
+        values=values,
+        marker_colors=colors,
+        textinfo='label+percent',
+        insidetextorientation='radial'
+    )])
+
